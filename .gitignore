@@ -1,0 +1,10 @@
+.tmp.driveupload/
+src/__pycache__/
+images/dataset/sign_mnist_big.csv
+images/dataset/sign_mnist.csv
+output/grad_cams/
+output/imagenes
+src/utils/
+src/cnn.py
+src/simple_test.py
+src/video.py
