@@ -170,7 +170,6 @@ def run_models(dataset, metric):
         lambda: optimizers.SGD(learning_rate=lr, momentum=beta_1, name="Momentum"),
         lambda: optimizers.RMSprop(learning_rate=lr, name="RMSprop"),
         lambda: optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, name="Adam"),
-        # lambda: optimizers.Adamax(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, name="Adamax"),
         ]
     epochs = [5, 10, 20, 50, 75, 100]
     metric_values_1 = {
@@ -241,8 +240,8 @@ def run_models(dataset, metric):
         "Adam": optimizers.Adam,
     }
     epochs_dict = {
-        "DGE": 50,
-        "Momentum": 20,
+        "DGE": 75,
+        "Momentum": 25,
         "RMSprop": 10,
         "Adam": 5,
     }
@@ -262,9 +261,9 @@ def run_models(dataset, metric):
             if name == "DGE":
                 optimizer = optimizer_info[1](learning_rate=alpha, name=name)
             elif name == "Momentum":
-                optimizer = optimizer_info[1](learning_rate=alpha, momentum=0.9, name=name)
+                optimizer = optimizer_info[1](learning_rate=alpha, momentum=beta_1, name=name)
             elif name == "Adam":
-                optimizer = optimizer_info[1](learning_rate=alpha, beta_1=0.9, beta_2=0.999, name=name)
+                optimizer = optimizer_info[1](learning_rate=alpha, beta_1=beta_1, beta_2=beta_2, name=name)
             elif name == "RMSprop":
                 optimizer = optimizer_info[1](learning_rate=alpha, name=name)
             else:
@@ -327,35 +326,127 @@ def run_models(dataset, metric):
         f.close()
 
 def create_model(dataset):
-    model = CNN(dataset, optimizer=tf.keras.optimizers.Adam(learning_rate=0.002, name='final'), 
-                verbose=1, epochs=5)
+    model = CNN(dataset, optimizer=tf.keras.optimizers.Adam(learning_rate=0.001, name='final'), 
+                verbose=0, epochs=10)
     model.train()
-    # pred, true = model.predict()
+    pred, true = model.predict()
     model.save_model()
 
-    # print(classification_report(true, pred))
+    print(classification_report(true, pred))
 
-    # labels = list(sign_dict.values())
-    # del labels[9] # J
-    # del labels[24] # Z
+    labels = list(sign_dict.values())
+    del labels[9] # J
+    del labels[24] # Z
 
-    # cm = confusion_matrix(true, pred)
-    # plt.figure(figsize=(12, 10))
-    # sns.heatmap(cm, annot=True, fmt="d", xticklabels=labels, yticklabels=labels, cbar=False)
-    # plt.xlabel("Etiquetas predichas")
-    # plt.ylabel("Etiquetas verdaderas")
-    # plt.title("Matriz de confusión")
-    # plt.savefig("output/model_confusion_matrix.png")
+    cm = confusion_matrix(true, pred)
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt="d", xticklabels=labels, yticklabels=labels, cbar=False)
+    plt.xlabel("Etiquetas predichas")
+    plt.ylabel("Etiquetas verdaderas")
+    plt.title("Matriz de confusión")
+    plt.savefig("output/model_confusion_matrix.png")
+    plt.show()
+    plt.clf()
+
+    return
+
+def final_models():
+    np.random.seed(21)
+    tf.random.set_seed(21)
+    dataset = create_dataset()
+    dge = CNN(dataset, optimizer=tf.keras.optimizers.SGD(learning_rate=0.05, name='DGE_final'), verbose=0, epochs=10)
+    momentum = CNN(dataset, optimizer=tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.9, name='Momentum_final'), verbose=0, epochs=10)
+    rmsprop = CNN(dataset, optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.002, name='RMSprop_final'), verbose=0, epochs=10)
+    adam = CNN(dataset, optimizer=tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, name='Adam_final'), verbose=0, epochs=10)
+
+    print("Entrenando SGD...")
+    dge.train()
+    print("Entrenando Momentum...")
+    momentum.train()
+    print("Entrenando RMSprop...")
+    rmsprop.train()
+    print("Entrenando Adam...")
+    adam.train()
+
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(20, 20))
+    ax = axes[0, 0]
+    ax.plot(range(1, 11), dge.history.history['accuracy'], label='DGE')
+    ax.plot(range(1, 11), momentum.history.history['accuracy'], label='Momentum')
+    ax.plot(range(1, 11), rmsprop.history.history['accuracy'], label='RMSprop')
+    ax.plot(range(1, 11), adam.history.history['accuracy'], label='Adam')
+    ax.grid()
+    ax.legend(fontsize=20)
+    ax.set_title("Acc. conjunto de entrenamiento", fontdict={'fontsize': 20, "fontweight": "bold"})
+    ax.set_ylabel("Acc.")
+    ax.set_xlabel("Épocas")
+
+    ax = axes[0, 1]
+    ax.plot(range(1, 11), dge.history.history['val_accuracy'], label='DGE')
+    ax.plot(range(1, 11), momentum.history.history['val_accuracy'], label='Momentum')
+    ax.plot(range(1, 11), rmsprop.history.history['val_accuracy'], label='RMSprop')
+    ax.plot(range(1, 11), adam.history.history['val_accuracy'], label='Adam')
+    ax.grid()
+    ax.legend(fontsize=20)
+    ax.set_title("Acc. conjunto de validación", fontdict={'fontsize': 20, "fontweight": "bold"})
+    ax.set_ylabel("Acc.")
+    ax.set_xlabel("Épocas")
+
+    ax = axes[1, 0]
+    ax.plot(range(1, 11), dge.history.history['loss'], label='DGE')
+    ax.plot(range(1, 11), momentum.history.history['loss'], label='Momentum')
+    ax.plot(range(1, 11), rmsprop.history.history['loss'], label='RMSprop')
+    ax.plot(range(1, 11), adam.history.history['loss'], label='Adam')
+    ax.grid()
+    ax.legend(fontsize=20)
+    ax.set_title("Pérdida conjunto de entrenamiento", fontdict={'fontsize': 20, "fontweight": "bold"})
+    ax.set_ylabel("Pérdida")
+    ax.set_xlabel("Épocas")
+
+    ax = axes[1, 1]
+    ax.plot(range(1, 11), dge.history.history['val_loss'], label='DGE')
+    ax.plot(range(1, 11), momentum.history.history['val_loss'], label='Momentum')
+    ax.plot(range(1, 11), rmsprop.history.history['val_loss'], label='RMSprop')
+    ax.plot(range(1, 11), adam.history.history['val_loss'], label='Adam')
+    ax.grid()
+    ax.legend(fontsize=20)
+    ax.set_title("Pérdida conjunto de validación", fontdict={'fontsize': 20, "fontweight": "bold"})
+    ax.set_ylabel("Pérdida")
+    ax.set_xlabel("Épocas")
+
+    plt.tight_layout()
+    plt.savefig("output/final_models.png")
     # plt.show()
-    # plt.clf()
+    plt.close(fig)
+    metrics = {
+        "train_acc": {
+            "dge": dge.history.history['accuracy'][-1],
+            "momentum": momentum.history.history['accuracy'][-1],
+            "rmsprop": rmsprop.history.history['accuracy'][-1],
+            "adam": adam.history.history['accuracy'][-1],
+        },
+        "val_acc": {
+            "dge": dge.history.history['val_accuracy'][-1],
+            "momentum": momentum.history.history['val_accuracy'][-1],
+            "rmsprop": rmsprop.history.history['val_accuracy'][-1],
+            "adam": adam.history.history['val_accuracy'][-1],
+        },
+        "train_loss": {
+            "dge": dge.history.history['loss'][-1],
+            "momentum": momentum.history.history['loss'][-1],
+            "rmsprop": rmsprop.history.history['loss'][-1],
+            "adam": adam.history.history['loss'][-1],
+        },
+        "val_loss": {
+            "dge": dge.history.history['val_loss'][-1],
+            "momentum": momentum.history.history['val_loss'][-1],
+            "rmsprop": rmsprop.history.history['val_loss'][-1],
+            "adam": adam.history.history['val_loss'][-1],
+        }
+    }
 
-    return
-
-def test_model(dataset, model_name):
-    model = CNN(dataset, verbose=0, model_name=model_name)
-    model.evaluate()
-    model.predict()
-    return
+    with open(f"output/final_metrics.json", "w") as f:
+        json.dump(metrics, f)
+        f.close()
 
 def create_dataset():
     df_train = pd.read_csv("data/sign_mnist.csv")
@@ -364,13 +455,6 @@ def create_dataset():
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=242)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=242)
-
-    # print(X_train.shape)
-    # print(y_train.shape)
-    # print(X_val.shape)
-    # print(y_val.shape)
-    # print(X_test.shape)	
-    # print(y_test.shape)
 
     dataset = {
         "x_train": X_train,
@@ -383,10 +467,11 @@ def create_dataset():
     return dataset
 
 if __name__ == "__main__":
-    dataset = create_dataset()
-
+    # dataset = create_dataset()
     # run_models(dataset, "accuracy")
     # run_models(dataset, "loss")
-    create_model(dataset)
+    # create_model(dataset)
+
+    final_models()
 
 

@@ -8,3 +8,4 @@ src/utils/
 src/cnn.py
 src/simple_test.py
 src/video.py
+data/sign_mnist.csv
